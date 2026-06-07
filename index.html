@@ -185,6 +185,26 @@
   .bigbtn{width:100%;background:var(--accent);color:#15140f;border:0;border-radius:13px;padding:14px;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:14px;letter-spacing:.01em;cursor:pointer;margin-bottom:10px;transition:.14s;}
   .bigbtn.alt{background:var(--surface);color:var(--text);border:1px solid var(--line);}
   .bigbtn:active{transform:scale(.99);}
+  .logbtn.full{flex:1;padding:13px 16px;}
+  .mnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .mnav button{background:var(--surface);border:1px solid var(--line);color:var(--text);width:42px;height:42px;border-radius:12px;font-size:20px;line-height:1;cursor:pointer;}
+  .mnav button:active{background:var(--surface2);}
+  .mnav .ml{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:19px;letter-spacing:-.01em;}
+  .grid7{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+  .grid7 .gh{text-align:center;font-size:10px;font-weight:700;color:var(--faint);text-transform:uppercase;padding-bottom:2px;}
+  .grid7 .gd{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:9px;background:var(--surface);border:1px solid var(--line);font-size:12px;color:var(--muted);}
+  .grid7 .gd.on{background:var(--accent);color:#15140f;font-weight:800;border-color:var(--accent);box-shadow:0 4px 12px -4px rgba(201,242,77,.4);}
+  .fbar{display:flex;align-items:center;gap:11px;margin-bottom:10px;}
+  .fbar .fbl{flex:0 0 38%;font-size:12.5px;font-weight:600;}
+  .fbar .ftrack{flex:1;height:9px;background:var(--surface);border:1px solid var(--line);border-radius:6px;overflow:hidden;}
+  .fbar .ffill{height:100%;background:linear-gradient(90deg,var(--accent-dim),var(--accent));border-radius:6px;}
+  .fbar .fbn{flex:0 0 auto;font-size:12.5px;font-weight:800;color:var(--accent);width:22px;text-align:right;}
+  .grow{display:flex;justify-content:space-between;align-items:center;padding:12px 2px;border-bottom:1px solid var(--line);}
+  .grow:last-child{border-bottom:0;}
+  .grow .gn{font-size:13.5px;font-weight:600;}
+  .gup{color:var(--green);font-weight:800;font-size:13px;}
+  .gflat{color:var(--muted);font-weight:600;font-size:12px;}
+  .gdown{color:var(--coral);font-weight:700;font-size:13px;}
   .hidden{display:none;}
   .savetoast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%) translateY(20px);
     background:var(--accent);color:#15140f;font-weight:700;font-size:13px;padding:9px 18px;border-radius:999px;
@@ -279,6 +299,22 @@
     <input type="file" id="importFile" accept="application/json,.json" class="hidden">
     <button class="resetbtn" id="resetBtn">Reset all logged data</button>
   </section>
+
+  <!-- MONTH TAB -->
+  <section id="tab-month" class="hidden">
+    <div class="mnav">
+      <button id="mPrev" aria-label="Previous month">‹</button>
+      <div class="ml" id="monthLabel"></div>
+      <button id="mNext" aria-label="Next month">›</button>
+    </div>
+    <div class="statgrid" id="mStats"></div>
+    <div class="sechead">Consistency</div>
+    <div class="grid7" id="mGrid" style="margin-bottom:18px;"></div>
+    <div class="sechead">Where your work went</div>
+    <div id="mFocus" style="margin-bottom:4px;"></div>
+    <div class="sechead">Strength changes</div>
+    <div id="mGains"></div>
+  </section>
 </div>
 
 <div class="savetoast" id="toast">Logged ✓</div>
@@ -291,6 +327,10 @@
   <button data-tab="progress">
     <svg viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 15l3-4 3 3 4-6"/></svg>
     Progress
+  </button>
+  <button data-tab="month">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M9 14l2 2 4-4"/></svg>
+    Month
   </button>
   <button data-tab="guide">
     <svg viewBox="0 0 24 24"><path d="M4 4h11a3 3 0 013 3v13a2 2 0 00-2-2H4z"/><path d="M20 7v13a2 2 0 00-2-2H4"/></svg>
@@ -466,13 +506,25 @@ function badge(it){
   if(it.knee==="caution") b+=`<span class="badge b-caut">Go gentle</span>`;
   return b;
 }
+function doneToday(id){
+  const arr=state.logs[id]; if(!arr) return false;
+  const t=todayStr();
+  return arr.some(e=>e.date===t && e.done);
+}
 function lastLogHtml(id){
+  const m=modeOf(id);
   const arr=state.logs[id];
-  if(!arr||!arr.length) return `<div class="last empty"><span class="dot"></span>No log yet — tap to record your first set</div>`;
+  if(m==="free"){
+    if(doneToday(id)) return `<div class="last"><span class="dot"></span>Done today ✓</div>`;
+    if(arr&&arr.length) return `<div class="last empty"><span class="dot"></span>Last done: ${fmtDate(arr[arr.length-1].date)}</div>`;
+    return `<div class="last empty"><span class="dot"></span>Not done yet — tap when finished</div>`;
+  }
+  if(!arr||!arr.length){
+    const hint = m==="mins" ? "tap to log today's minutes" : "tap to record your first set";
+    return `<div class="last empty"><span class="dot"></span>No log yet — ${hint}</div>`;
+  }
   const l=arr[arr.length-1];
-  const w = l.weight!=null && l.weight!=="" ? l.weight+" lb" : "—";
-  const reps = l.reps!=null && l.reps!=="" ? " × "+l.reps : "";
-  return `<div class="last"><span class="dot"></span>Last: <b style="color:inherit">${w}${reps}</b> · ${fmtDate(l.date)}</div>`;
+  return `<div class="last"><span class="dot"></span>Last: <b style="color:inherit">${entryText(l)}</b> · ${fmtDate(l.date)}</div>`;
 }
 function renderDayContent(){
   const d=PROGRAM[selectedDay];
@@ -498,15 +550,54 @@ function renderDayContent(){
     if(sec.title){
       const sh=document.createElement("div"); sh.className="sechead"; sh.textContent=sec.title; c.appendChild(sh);
     }
-    sec.items.forEach((it,ii)=>{
-      if(sec.checklist){ c.appendChild(checkEl(it,ii)); }
-      else{ c.appendChild(cardEl(it,ii)); }
-    });
+    sec.items.forEach((it,ii)=>{ c.appendChild(cardEl(it,ii)); });
   });
 }
+const MODE = {
+  dance:"mins", wed_stairs:"mins",
+  sun_deadbug:"free", sun_birddog:"free", sun_sideplank:"free",
+  mon_heel:"free", mon_towel:"free", mon_bridge:"free",
+  leg_raise:"free",
+  wed_heel:"free", wed_towel:"free", wed_ballbridge:"free", wed_stepdown:"free", wed_roller:"free",
+  sl_bridge:"free", db_walk:"free",
+  sat_band:"free", sat_plank:"free", sat_deadbug:"free"
+};
+function modeOf(id){ return MODE[id] || "weight"; }
+function entryVal(e){
+  if(e.weight!=null) return e.weight;
+  if(e.mins!=null) return e.mins;
+  if(e.secs!=null) return e.secs;
+  if(e.reps!=null) return e.reps;
+  return null;
+}
+function unitOf(id){
+  const m=modeOf(id);
+  if(m==="mins") return "min";
+  if(m==="free") return "";
+  return "lb";
+}
+function entryText(e){
+  if(e.weight!=null) return e.weight+" lb"+(e.reps!=null?" \u00d7 "+e.reps:"");
+  if(e.mins!=null) return e.mins+" min";
+  if(e.secs!=null) return e.secs+" sec"+(e.reps!=null?" \u00d7 "+e.reps:"");
+  if(e.reps!=null) return e.reps+" reps";
+  return "Done \u2713";
+}
 function cardEl(it,delay){
+  const mode=modeOf(it.id);
   const card=document.createElement("div");
   card.className="card"; card.style.animationDelay=(delay*0.04)+"s";
+  let fields="", btnLabel="Log", btnClass="logbtn";
+  if(mode==="mins"){
+    fields=`<div class="field"><label>Minutes</label><input type="number" inputmode="numeric" placeholder="–" id="m_${it.id}"></div>`;
+  }else if(mode==="free"){
+    fields="";
+    btnClass="logbtn full"+(doneToday(it.id)?" done":"");
+    btnLabel=doneToday(it.id)?"✓ Done today":"Mark done";
+  }else{
+    fields=`<div class="field"><label>Weight (lb)</label><input type="number" inputmode="decimal" placeholder="–" id="w_${it.id}"></div>
+            <div class="field"><label>Reps</label><input type="number" inputmode="numeric" placeholder="–" id="r_${it.id}"></div>`;
+  }
   card.innerHTML=`
     <div class="top">
       <div class="ename">${it.name}</div>
@@ -516,21 +607,45 @@ function cardEl(it,delay){
     ${it.note?`<div class="note">${it.note}</div>`:""}
     ${lastLogHtml(it.id)}
     <div class="logrow">
-      <div class="field"><label>Weight (lb)</label><input type="number" inputmode="decimal" placeholder="–" id="w_${it.id}"></div>
-      <div class="field"><label>Reps</label><input type="number" inputmode="numeric" placeholder="–" id="r_${it.id}"></div>
-      <button class="logbtn" id="b_${it.id}">Log</button>
+      ${fields}
+      <button class="${btnClass}" id="b_${it.id}">${btnLabel}</button>
     </div>`;
   card.querySelector("#b_"+it.id).onclick=()=>{
-    const w=card.querySelector("#w_"+it.id).value;
-    const r=card.querySelector("#r_"+it.id).value;
-    if(w===""&&r===""){ toast("Enter weight or reps"); return; }
+    if(mode==="free"){
+      const t=todayStr();
+      if(!state.logs[it.id]) state.logs[it.id]=[];
+      const i=state.logs[it.id].findIndex(e=>e.date===t && e.done);
+      if(i>=0) state.logs[it.id].splice(i,1);
+      else state.logs[it.id].push({date:t, done:true});
+      saveState();
+      const on=doneToday(it.id);
+      const btn=card.querySelector("#b_"+it.id);
+      btn.textContent=on?"✓ Done today":"Mark done";
+      btn.classList.toggle("done", on);
+      card.querySelector(".last").outerHTML=lastLogHtml(it.id);
+      toast(on?"Marked done ✓":"Unmarked");
+      buildProgSelect();
+      return;
+    }
+    let entry={date:todayStr()};
+    if(mode==="mins"){
+      const m=card.querySelector("#m_"+it.id).value;
+      if(m===""){ toast("Enter minutes"); return; }
+      entry.mins=Number(m);
+    }else{
+      const w=card.querySelector("#w_"+it.id).value;
+      const r=card.querySelector("#r_"+it.id).value;
+      if(w===""&&r===""){ toast("Enter weight or reps"); return; }
+      if(w!=="") entry.weight=Number(w);
+      if(r!=="") entry.reps=Number(r);
+    }
     if(!state.logs[it.id]) state.logs[it.id]=[];
-    state.logs[it.id].push({date:todayStr(),weight:w===""?null:Number(w),reps:r===""?null:Number(r)});
+    state.logs[it.id].push(entry);
     saveState();
     const btn=card.querySelector("#b_"+it.id); btn.textContent="✓"; btn.classList.add("done");
     setTimeout(()=>{btn.textContent="Log";btn.classList.remove("done");},900);
     card.querySelector(".last").outerHTML=lastLogHtml(it.id);
-    card.querySelector("#w_"+it.id).value=""; card.querySelector("#r_"+it.id).value="";
+    ["m_","w_","r_"].forEach(p=>{const el=card.querySelector("#"+p+it.id); if(el) el.value="";});
     toast("Logged ✓");
     buildProgSelect();
   };
@@ -573,25 +688,26 @@ function renderProgress(){
     $("#progHist").innerHTML=`<div class="empty-state">Log a few sessions in the Plan tab and your progress will chart here.</div>`;
     return;
   }
-  $("#progChartBox").classList.remove("hidden");
-  const weights=arr.map(a=>a.weight).filter(v=>v!=null);
-  const first=weights[0], last=weights[weights.length-1];
-  const max=weights.length?Math.max(...weights):null;
+  const unit=unitOf(id);
+  const uLbl = unit ? " ("+unit+")" : "";
+  const charted=arr.filter(a=>entryVal(a)!=null);
+  const vals=charted.map(entryVal);
+  const first=vals[0], last=vals[vals.length-1];
+  const max=vals.length?Math.max(...vals):null;
   const delta=(first!=null&&last!=null)?(last-first):null;
   $("#progStats").innerHTML=`
     <div class="stat"><div class="v">${arr.length}</div><div class="l">Sessions</div></div>
-    <div class="stat"><div class="v">${max!=null?max:"–"}</div><div class="l">Best (lb)</div></div>
-    <div class="stat"><div class="v" style="color:${delta>0?'var(--green)':'var(--accent)'}">${delta!=null?(delta>0?'+':'')+delta:'–'}</div><div class="l">Change (lb)</div></div>`;
-  $("#progChart").innerHTML=lineChart(arr);
-  $("#progHist").innerHTML=arr.slice().reverse().map(a=>{
-    const w=a.weight!=null?`<b>${a.weight} lb</b>`:"–";
-    const r=a.reps!=null?` × ${a.reps}`:"";
-    return `<div class="histrow"><span class="hd">${fmtDate(a.date)}</span><span class="hv">${w}${r}</span></div>`;
-  }).join("");
+    <div class="stat"><div class="v">${max!=null?max:"–"}</div><div class="l">Best${uLbl}</div></div>
+    <div class="stat"><div class="v" style="color:${delta>0?'var(--green)':'var(--accent)'}">${delta!=null?(delta>0?'+':'')+delta:'–'}</div><div class="l">Change${uLbl}</div></div>`;
+  if(charted.length){ $("#progChartBox").classList.remove("hidden"); $("#progChart").innerHTML=lineChart(charted); }
+  else{ $("#progChartBox").classList.add("hidden"); }
+  $("#progHist").innerHTML=arr.slice().reverse().map(a=>
+    `<div class="histrow"><span class="hd">${fmtDate(a.date)}</span><span class="hv">${entryText(a)}</span></div>`
+  ).join("");
 }
 function lineChart(arr){
   const W=480,H=150,pad=24;
-  const pts=arr.map((a,i)=>({x:i,y:a.weight!=null?a.weight:0}));
+  const pts=arr.map((a,i)=>({x:i,y:(entryVal(a)!=null?entryVal(a):0)}));
   const ys=pts.map(p=>p.y);
   let min=Math.min(...ys),max=Math.max(...ys);
   if(min===max){min=min-1;max=max+1;}
@@ -613,13 +729,71 @@ function lineChart(arr){
   </svg>`;
 }
 
+/* ---------- MONTHLY ANALYSIS ---------- */
+const NAME={}; PROGRAM.forEach(d=>d.sections.forEach(s=>s.items.forEach(it=>{ if(!NAME[it.id]) NAME[it.id]=it.name; })));
+function nameOf(id){ return NAME[id]||id; }
+const FOCUS={
+  hipthrust:"Glutes & legs", kb_deadlift:"Glutes & legs", hip_abd:"Glutes & legs", hip_add:"Glutes & legs",
+  leg_curl:"Glutes & legs", pullthrough:"Glutes & legs", stepup:"Glutes & legs", hipthrust2:"Glutes & legs",
+  rdl:"Glutes & legs", hip_abd2:"Glutes & legs", hip_add2:"Glutes & legs", leg_press:"Glutes & legs",
+  sl_bridge:"Glutes & legs", kb_swing:"Glutes & legs", mon_bridge:"Glutes & legs", wed_ballbridge:"Glutes & legs", sat_band:"Glutes & legs",
+  db_press:"Chest", machine_press:"Chest", pec_fly:"Chest", chest_ext:"Chest", db_press2:"Chest", pec_fly2:"Chest",
+  pulldown:"Back", seated_row:"Back", rear_delt:"Back", bent_row:"Back", ext_rot:"Back",
+  tri_ext:"Arms & shoulders", shoulder_press:"Arms & shoulders", biceps:"Arms & shoulders", triceps2:"Arms & shoulders",
+  leg_raise:"Abs & core", weighted_crunch:"Abs & core", side_crunch:"Abs & core", sun_deadbug:"Abs & core",
+  sun_birddog:"Abs & core", sun_sideplank:"Abs & core", sat_plank:"Abs & core", sat_deadbug:"Abs & core", db_walk:"Abs & core",
+  dance:"Cardio", wed_stairs:"Cardio",
+  mon_heel:"Rehab", mon_towel:"Rehab", wed_heel:"Rehab", wed_towel:"Rehab", wed_stepdown:"Rehab", wed_roller:"Rehab"
+};
+function focusOf(id){ return FOCUS[id]||"Other"; }
+let monthCur=(()=>{const d=new Date();return {y:d.getFullYear(),m:d.getMonth()};})();
+function allEntries(){ const o=[]; Object.keys(state.logs).forEach(id=>(state.logs[id]||[]).forEach(e=>o.push(Object.assign({id},e)))); return o; }
+function monthEntries(){ return allEntries().filter(e=>{const d=new Date(e.date+"T00:00"); return d.getFullYear()===monthCur.y&&d.getMonth()===monthCur.m;}); }
+function renderMonth(){
+  $("#monthLabel").textContent=new Date(monthCur.y,monthCur.m,1).toLocaleDateString(undefined,{month:"long",year:"numeric"});
+  const ents=monthEntries();
+  const days=new Set(ents.map(e=>e.date));
+  const cardioMin=ents.filter(e=>e.mins!=null).reduce((s,e)=>s+e.mins,0);
+  $("#mStats").innerHTML=`
+    <div class="stat"><div class="v">${days.size}</div><div class="l">Days trained</div></div>
+    <div class="stat"><div class="v">${ents.length}</div><div class="l">Total logs</div></div>
+    <div class="stat"><div class="v">${cardioMin}</div><div class="l">Cardio min</div></div>`;
+  // consistency grid
+  const first=new Date(monthCur.y,monthCur.m,1).getDay();
+  const dim=new Date(monthCur.y,monthCur.m+1,0).getDate();
+  let cells=""; ["S","M","T","W","T","F","S"].forEach(d=>cells+=`<div class="gh">${d}</div>`);
+  for(let i=0;i<first;i++) cells+=`<div></div>`;
+  for(let d=1;d<=dim;d++){ const ds=`${monthCur.y}-${String(monthCur.m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; cells+=`<div class="gd${days.has(ds)?" on":""}">${d}</div>`; }
+  $("#mGrid").innerHTML=cells;
+  // focus breakdown
+  const counts={}; ents.forEach(e=>{const f=focusOf(e.id); counts[f]=(counts[f]||0)+1;});
+  const order=["Glutes & legs","Chest","Back","Arms & shoulders","Abs & core","Cardio","Rehab","Other"];
+  const max=Math.max(1,...Object.values(counts));
+  let fb=""; order.forEach(f=>{const c=counts[f]||0; if(!c) return; fb+=`<div class="fbar"><div class="fbl">${f}</div><div class="ftrack"><div class="ffill" style="width:${Math.round(c/max*100)}%"></div></div><div class="fbn">${c}</div></div>`;});
+  $("#mFocus").innerHTML=fb||`<div class="empty-state">No sessions logged this month yet.</div>`;
+  // strength changes
+  const byId={}; ents.forEach(e=>{ if(e.weight!=null){(byId[e.id]=byId[e.id]||[]).push(e);} });
+  const rows=Object.keys(byId).map(id=>{ const a=byId[id].slice().sort((x,y)=>x.date<y.date?-1:1); const best=Math.max(...a.map(z=>z.weight)); return {name:nameOf(id), delta:a[a.length-1].weight-a[0].weight, best}; });
+  rows.sort((a,b)=>b.delta-a.delta);
+  $("#mGains").innerHTML = rows.length ? rows.map(r=>{
+    const tag = r.delta>0?`<span class="gup">+${r.delta} lb</span>` : r.delta===0?`<span class="gflat">held ${r.best} lb</span>` : `<span class="gdown">${r.delta} lb</span>`;
+    return `<div class="grow"><span class="gn">${r.name}</span>${tag}</div>`;
+  }).join("") : `<div class="empty-state">Log some weighted lifts this month to see strength changes.</div>`;
+}
+function shiftMonth(n){ let m=monthCur.m+n, y=monthCur.y; if(m<0){m=11;y--;} if(m>11){m=0;y++;} monthCur={y,m}; renderMonth(); }
+
 /* ---------- TABS ---------- */
 function showTab(t){
-  ["plan","progress","guide"].forEach(x=>$("#tab-"+x).classList.toggle("hidden",x!==t));
+  ["plan","progress","month","guide"].forEach(x=>$("#tab-"+x).classList.toggle("hidden",x!==t));
   document.querySelectorAll("nav.tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
   if(t==="progress") renderProgress();
+  if(t==="month") renderMonth();
   window.scrollTo({top:0,behavior:"smooth"});
 }
+document.addEventListener("click",e=>{
+  if(e.target.id==="mPrev") shiftMonth(-1);
+  if(e.target.id==="mNext") shiftMonth(1);
+});
 document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
 
 /* ---------- RESET ---------- */
